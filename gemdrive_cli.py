@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys
 import os
 from urllib import request
@@ -44,19 +46,16 @@ def download_dir(url, parent_dir):
         else:
             download_dir(url + filename + '/', path)
 
+def sync():
+    url = sys.argv[2]
 
-if __name__ == '__main__':
-
-    if len(sys.argv) < 2:
-        print("Invalid args")
-        sys.exit(1)
-
-    url = sys.argv[1]
-
-    d = os.getcwd()
+    if len(sys.argv) > 3:
+        dest_dir = sys.argv[3]
+    else:
+        dest_dir = os.getcwd()
 
     if url.endswith('/'):
-        download_dir(url, d)
+        download_dir(url, dest_dir)
     else:
         url_parts = url.split('/')
         parent_gem_url = '/'.join(url_parts[0:-1]) + '/remfs.json'
@@ -68,3 +67,20 @@ if __name__ == '__main__':
         gem_data = parent_gem_data['children'][filename]
 
         download_file(url, filename, gem_data)
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 3:
+        print("Invalid args")
+        sys.exit(1)
+
+    print(sys.argv)
+    command = sys.argv[1]
+
+    if command == 'sync':
+        sync()
+    else:
+        print("Unrecognized command: " + command)
+        sys.exit(1)
+
