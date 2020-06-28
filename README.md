@@ -27,7 +27,9 @@ Or specify a destination:
 ./gemdrive_cli.py sync https://gemdrive.io/ dest_dir
 ```
 
-Also works for downloading single files:
+Be sure to include the trailing '/', otherwise it will download it as a file.
+
+Speaking of which, sync also works for downloading single files:
 
 ```bash
 ./gemdrive_cli.py sync https://gemdrive.io/gemdrive_logo.png
