@@ -24,8 +24,8 @@ def download_file(url, path, gem_data):
                 f.write(chunk)
 
 def download_dir(url, parent_dir):
-    res = request.urlopen(url + 'remfs.json')
 
+    res = request.urlopen(url + 'remfs.json')
     body = res.read()
     data = json.loads(body)
 
@@ -46,8 +46,23 @@ def download_dir(url, parent_dir):
         else:
             download_dir(url + filename + '/', path)
 
-def sync():
-    url = sys.argv[2]
+def ls(url):
+    if url.endswith('/'):
+        gem_url = url + 'remfs.json'
+    else:
+        gem_url = url + '/remfs.json'
+
+    res = request.urlopen(gem_url)
+    body = res.read()
+    gem_data = json.loads(body)
+
+    print("Filename\tSize")
+
+    for filename in gem_data['children']:
+        child = gem_data['children'][filename]
+        print("%s\t%d" % (filename, child['size']))
+
+def sync(url):
 
     if len(sys.argv) > 3:
         dest_dir = sys.argv[3]
@@ -75,11 +90,14 @@ if __name__ == '__main__':
         print("Invalid args")
         sys.exit(1)
 
-    print(sys.argv)
     command = sys.argv[1]
 
-    if command == 'sync':
-        sync()
+    url = sys.argv[2]
+
+    if command == 'ls':
+        ls(url)
+    elif command == 'sync':
+        sync(url)
     else:
         print("Unrecognized command: " + command)
         sys.exit(1)
