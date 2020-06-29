@@ -5,7 +5,6 @@ import os
 from urllib import request
 from urllib.parse import urlparse 
 import json
-from pprint import pprint
 from datetime import datetime
 import argparse
 import math
