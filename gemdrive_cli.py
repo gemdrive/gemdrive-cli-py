@@ -62,7 +62,7 @@ def download_dir(url, parent_dir, token):
 
         path = os.path.join(parent_dir, filename)
 
-        print("DL", url + filename)
+        print(url + filename)
 
         if child['type'] == 'file':
             download_file(url + filename, path, child, token)
@@ -128,7 +128,6 @@ def build_gem_url(url):
 
     gem_url = '%s://%s/.gemdrive/meta%s%s' % (url_obj.scheme, url_obj.netloc, url_obj.path, end)
 
-    print(gem_url)
     return gem_url
 
 
