@@ -3,6 +3,7 @@
 import sys
 import os
 from urllib import request
+from urllib.parse import urlparse 
 import json
 from pprint import pprint
 from datetime import datetime
@@ -42,7 +43,7 @@ def download_file(url, path, gem_data, token):
 
 def download_dir(url, parent_dir, token):
 
-    gem_url = url + 'remfs.json'
+    gem_url = build_gem_url(url) 
 
     if token:
         gem_url += '?access_token=' + token
@@ -61,7 +62,7 @@ def download_dir(url, parent_dir, token):
 
         path = os.path.join(parent_dir, filename)
 
-        print(url + filename)
+        print("DL", url + filename)
 
         if child['type'] == 'file':
             download_file(url + filename, path, child, token)
@@ -73,10 +74,7 @@ def ls(args):
     url = args.url
     token = args.token
 
-    if url.endswith('/'):
-        gem_url = url + 'remfs.json'
-    else:
-        gem_url = url + '/remfs.json'
+    gem_url = build_gem_url(url)
 
     if token:
         gem_url += '?access_token=' + token
@@ -105,7 +103,9 @@ def sync(args):
         download_dir(url, out_dir, token)
     else:
         url_parts = url.split('/')
-        parent_gem_url = '/'.join(url_parts[0:-1]) + '/remfs.json'
+        parent_dir_url = '/'.join(url_parts[0:-1])
+
+        parent_gem_url = build_gem_url(parent_dir_url)
 
         if token:
             parent_gem_url += '?access_token=' + token
@@ -117,6 +117,19 @@ def sync(args):
         gem_data = parent_gem_data['children'][filename]
 
         download_file(url, filename, gem_data, token)
+
+def build_gem_url(url):
+    url_obj = urlparse(url)
+
+    if url.endswith('/'):
+        end = 'gemdrive.json'
+    else:
+        end = '/gemdrive.json'
+
+    gem_url = '%s://%s/.gemdrive/meta%s%s' % (url_obj.scheme, url_obj.netloc, url_obj.path, end)
+
+    print(gem_url)
+    return gem_url
 
 
 if __name__ == '__main__':
