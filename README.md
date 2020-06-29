@@ -50,7 +50,8 @@ curl https://gemdrive.io/gemdrive_logo.png > gemdrive_logo.png
 
 ## sync limitations
 
-* Currently uses only file size to determine if a file already exists locally.
-  If you must be sure they match, delete the local files first.
+* Currently uses only file size and modified time (to the second) to determine
+  if a file already exists locally.  If you must be sure they match, delete the
+  local files first.
 * Currently not optimized. Trees with lots of directories and small files will
   sync much slower.
