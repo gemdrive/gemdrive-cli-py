@@ -7,6 +7,7 @@ import json
 from pprint import pprint
 from datetime import datetime
 import argparse
+import math
 
 
 def download_file(url, path, gem_data, token):
@@ -21,20 +22,23 @@ def download_file(url, path, gem_data, token):
         pass
 
     size = 0
+    mod_time = ''
     if stat:
         size = stat.st_size
-        #modTime = datetime.fromtimestamp(stat.st_mtime).replace(microsecond=0).isoformat() + 'Z'
-        #print(modTime)
+        mod_time = datetime.utcfromtimestamp(stat.st_mtime).replace(microsecond=0).isoformat() + 'Z'
 
-    #print(gem_data['modTime'])
+    utc_dt = datetime.strptime(gem_data['modTime'], '%Y-%m-%dT%H:%M:%SZ')
+    mtime = math.floor((utc_dt - datetime(1970, 1, 1)).total_seconds())
 
-    needs_update = size != gem_data['size']
+    needs_update = size != gem_data['size'] or mod_time != gem_data['modTime']
 
     if needs_update:
         res = request.urlopen(url)
         with open(path, 'wb') as f:
             while chunk := res.read(4096):
                 f.write(chunk)
+        stat = os.stat(path)
+        os.utime(path, (stat.st_atime, mtime))
 
 def download_dir(url, parent_dir, token):
 
