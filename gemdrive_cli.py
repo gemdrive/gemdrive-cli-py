@@ -5,15 +5,28 @@ import os
 from urllib import request
 import json
 from pprint import pprint
+from datetime import datetime
+import argparse
 
 
-def download_file(url, path, gem_data):
+def download_file(url, path, gem_data, token):
+
+    if token:
+        url += '?access_token=' + token
 
     try:
         stat = os.stat(path)
-        size = stat.st_size
     except:
-        size = 0
+        stat = None
+        pass
+
+    size = 0
+    if stat:
+        size = stat.st_size
+        #modTime = datetime.fromtimestamp(stat.st_mtime).replace(microsecond=0).isoformat() + 'Z'
+        #print(modTime)
+
+    #print(gem_data['modTime'])
 
     needs_update = size != gem_data['size']
 
@@ -23,9 +36,14 @@ def download_file(url, path, gem_data):
             while chunk := res.read(4096):
                 f.write(chunk)
 
-def download_dir(url, parent_dir):
+def download_dir(url, parent_dir, token):
 
-    res = request.urlopen(url + 'remfs.json')
+    gem_url = url + 'remfs.json'
+
+    if token:
+        gem_url += '?access_token=' + token
+
+    res = request.urlopen(gem_url)
     body = res.read()
     data = json.loads(body)
 
@@ -42,15 +60,22 @@ def download_dir(url, parent_dir):
         print(url + filename)
 
         if child['type'] == 'file':
-            download_file(url + filename, path, child)
+            download_file(url + filename, path, child, token)
         else:
-            download_dir(url + filename + '/', path)
+            download_dir(url + filename + '/', path, token)
 
-def ls(url):
+def ls(args):
+
+    url = args.url
+    token = args.token
+
     if url.endswith('/'):
         gem_url = url + 'remfs.json'
     else:
         gem_url = url + '/remfs.json'
+
+    if token:
+        gem_url += '?access_token=' + token
 
     res = request.urlopen(gem_url)
     body = res.read()
@@ -62,18 +87,24 @@ def ls(url):
         child = gem_data['children'][filename]
         print("%s\t%d" % (filename, child['size']))
 
-def sync(url):
+def sync(args):
 
-    if len(sys.argv) > 3:
-        dest_dir = sys.argv[3]
+    url = args.url
+    token = args.token
+
+    if args.out_dir:
+        out_dir = args.out_dir 
     else:
-        dest_dir = os.getcwd()
+        out_dir = os.getcwd()
 
     if url.endswith('/'):
-        download_dir(url, dest_dir)
+        download_dir(url, out_dir, token)
     else:
         url_parts = url.split('/')
         parent_gem_url = '/'.join(url_parts[0:-1]) + '/remfs.json'
+
+        if token:
+            parent_gem_url += '?access_token=' + token
         filename = url_parts[-1]
 
         res = request.urlopen(parent_gem_url)
@@ -81,24 +112,22 @@ def sync(url):
         parent_gem_data = json.loads(body)
         gem_data = parent_gem_data['children'][filename]
 
-        download_file(url, filename, gem_data)
+        download_file(url, filename, gem_data, token)
 
 
 if __name__ == '__main__':
 
-    if len(sys.argv) < 3:
-        print("Invalid args")
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('command', help='Command')
+    parser.add_argument('url', help='GemDrive URI')
+    parser.add_argument('--token')
+    parser.add_argument('--out_dir')
+    args = parser.parse_args()
 
-    command = sys.argv[1]
-
-    url = sys.argv[2]
-
-    if command == 'ls':
-        ls(url)
-    elif command == 'sync':
-        sync(url)
+    if args.command == 'ls':
+        ls(args)
+    elif args.command == 'sync':
+        sync(args)
     else:
-        print("Unrecognized command: " + command)
+        print("Unrecognized command: " + args.command)
         sys.exit(1)
-
