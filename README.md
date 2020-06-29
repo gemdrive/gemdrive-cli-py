@@ -21,10 +21,10 @@ To download to the current working directory:
 ./gemdrive_cli.py sync https://gemdrive.io/
 ```
 
-Or specify a destination:
+Or specify a destination directory:
 
 ```bash
-./gemdrive_cli.py sync https://gemdrive.io/ dest_dir
+./gemdrive_cli.py sync https://gemdrive.io/ --out_dir out
 ```
 
 Be sure to include the trailing '/', otherwise it will download it as a file.
