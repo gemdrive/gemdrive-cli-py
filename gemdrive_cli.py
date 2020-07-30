@@ -4,7 +4,6 @@ import sys
 import os
 from urllib import request
 from urllib.parse import urlparse 
-import json
 from datetime import datetime
 import argparse
 import math
@@ -42,51 +41,51 @@ def download_file(url, path, gem_data, token):
 
 def download_dir(url, parent_dir, token):
 
-    gem_url = build_gem_url(url) 
+    gem_url = url + '.gemdrive-ls.tsv'
 
     if token:
         gem_url += '?access_token=' + token
 
     res = request.urlopen(gem_url)
     body = res.read()
-    data = json.loads(body)
+    gem_data = parse_gemdata(body.decode('utf-8'))
 
     try:
         os.makedirs(parent_dir)
     except:
         pass
 
-    for filename in data['children']:
-        child = data['children'][filename]
+    for filename in gem_data:
+        item = gem_data[filename]
 
         path = os.path.join(parent_dir, filename)
 
         print(url + filename)
 
-        if child['type'] == 'file':
-            download_file(url + filename, path, child, token)
+        if filename.endswith('/'):
+            download_dir(url + filename, path, token)
         else:
-            download_dir(url + filename + '/', path, token)
+            download_file(url + filename, path, item, token)
 
 def ls(args):
 
     url = args.url
     token = args.token
 
-    gem_url = build_gem_url(url)
+    gem_url = url + '.gemdrive-ls.tsv'
 
     if token:
         gem_url += '?access_token=' + token
 
     res = request.urlopen(gem_url)
     body = res.read()
-    gem_data = json.loads(body)
+    gem_data = parse_gemdata(body.decode('utf-8'))
 
-    print("Filename\tSize")
+    print("Filename\tModTime\tSize")
 
-    for filename in gem_data['children']:
-        child = gem_data['children'][filename]
-        print("%s\t%d" % (filename, child['size']))
+    for name in gem_data:
+        item = gem_data[name]
+        print("{}\t{}\t{}".format(name, item['modTime'], item['size']))
 
 def sync(args):
 
@@ -102,9 +101,9 @@ def sync(args):
         download_dir(url, out_dir, token)
     else:
         url_parts = url.split('/')
-        parent_dir_url = '/'.join(url_parts[0:-1])
+        parent_dir_url = '/'.join(url_parts[0:-1]) + '/'
 
-        parent_gem_url = build_gem_url(parent_dir_url)
+        parent_gem_url = parent_dir_url + '.gemdrive-ls.tsv'
 
         if token:
             parent_gem_url += '?access_token=' + token
@@ -112,22 +111,26 @@ def sync(args):
 
         res = request.urlopen(parent_gem_url)
         body = res.read()
-        parent_gem_data = json.loads(body)
-        gem_data = parent_gem_data['children'][filename]
+        parent_gem_data = parse_gemdata(body.decode('utf-8'))
+
+        gem_data = parent_gem_data[filename]
 
         download_file(url, filename, gem_data, token)
 
-def build_gem_url(url):
-    url_obj = urlparse(url)
 
-    if url.endswith('/'):
-        end = 'gemdrive.json'
-    else:
-        end = '/gemdrive.json'
+def parse_gemdata(tsv):
+    lines = tsv.splitlines()
+    gem_data = {}
 
-    gem_url = '%s://%s/.gemdrive/meta%s%s' % (url_obj.scheme, url_obj.netloc, url_obj.path, end)
+    for line in lines:
+        columns = str(line).split('\t')
+        name = columns[0]
+        gem_data[name] = {
+            'modTime': columns[1],
+            'size': int(columns[2]),
+        }
 
-    return gem_url
+    return gem_data
 
 
 if __name__ == '__main__':
