@@ -18,7 +18,7 @@ def traverse(url, parent_dir):
     except:
         pass
 
-    gem_url = url + '.gemdrive-ls.json'
+    gem_url = url + 'gemdrive/meta.json'
 
     res = request.urlopen(gem_url)
     body = res.read()
