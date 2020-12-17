@@ -10,14 +10,6 @@ def traverse(url, parent_dir):
 
     print(url)
 
-    name = os.path.basename(url[:-1])
-    path = os.path.join(parent_dir, name)
-
-    try:
-        os.makedirs(path)
-    except:
-        pass
-
     gem_url = url + 'gemdrive/meta.json'
 
     res = request.urlopen(gem_url)
@@ -30,10 +22,16 @@ def traverse(url, parent_dir):
     for child_name in gem_dir['children']:
         child = gem_dir['children'][child_name]
         child_url = url + child_name
-        if child_url.endswith('/'):
-            traverse(child_url, path)
+        child_path = os.path.join(parent_dir, child_name)
+        is_dir = child_url.endswith('/')
+        if is_dir:
+            try:
+                os.makedirs(child_path)
+            except:
+                pass
+            traverse(child_url, child_path)
         else:
-            job_queue.put((child_url, path, child))
+            job_queue.put((child_url, parent_dir, child))
 
 
 def downloader():
@@ -83,14 +81,21 @@ def handle_file(url, parent_dir, gem_data):
 
         os.utime(path, (stat.st_atime, mtime))
 
+def dir_name(path):
+    return os.path.basename(path[:-1])
 
 if __name__ == '__main__':
+
+    cwd = os.getcwd()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('url', help='GemDrive directory URL')
     parser.add_argument('--num-workers', type=int, help='Number of worker threads', default=4)
-    parser.add_argument('--out-dir', help='Output directory', default=os.getcwd())
+    parser.add_argument('--out-dir', help='Output directory', default=cwd)
     args = parser.parse_args()
+
+    if args.out_dir == cwd:
+        args.out_dir = os.path.join(cwd, dir_name(args.url))
 
     for w in range(args.num_workers):
         threading.Thread(target=downloader, daemon=True).start()
