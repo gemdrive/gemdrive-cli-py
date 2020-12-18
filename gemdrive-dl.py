@@ -29,10 +29,13 @@ def traverse(url, parent_dir, gem_data_in, options):
         child_path = os.path.join(parent_dir, child_name)
         is_dir = child_url.endswith('/')
         if is_dir:
-            try:
-                os.makedirs(child_path)
-            except:
-                pass
+
+
+            if not options['dry_run']:
+                try:
+                    os.makedirs(child_path)
+                except:
+                    pass
 
             child_gem_data = child
             if 'children' not in child:
@@ -80,24 +83,26 @@ def handle_file(url, parent_dir, gem_data, options):
 
     if needs_update:
         print("Syncing", url)
-        file_url = url
 
-        if token is not None:
-            file_url += '?access_token=' + token
+        if not options['dry_run']:
+            file_url = url
 
-        res = request.urlopen(file_url)
-        with open(path, 'wb') as f:
-            while True:
-                chunk = res.read(4096)
-                if not chunk:
-                    break
-                f.write(chunk)
-        stat = os.stat(path)
+            if token is not None:
+                file_url += '?access_token=' + token
 
-        if stat.st_size != gem_data['size']:
-            print("Sizes don't match", url)
+            res = request.urlopen(file_url)
+            with open(path, 'wb') as f:
+                while True:
+                    chunk = res.read(4096)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            stat = os.stat(path)
 
-        os.utime(path, (stat.st_atime, mtime))
+            if stat.st_size != gem_data['size']:
+                print("Sizes don't match", url)
+
+            os.utime(path, (stat.st_atime, mtime))
 
 def dir_name(path):
     return os.path.basename(path[:-1])
@@ -113,6 +118,8 @@ if __name__ == '__main__':
     parser.add_argument('--depth', help='Directory tree depth per request', default=8)
     parser.add_argument('--token', help='Access token', default=None)
     parser.add_argument('--verbose', help='Verbose printing', default=False, action='store_true')
+    parser.add_argument('--dry-run', help='Enable dry run mode. No changes will be made to destination',
+            default=False, action='store_true')
     args = parser.parse_args()
 
     if args.out_dir == cwd:
@@ -125,6 +132,7 @@ if __name__ == '__main__':
         'depth': args.depth,
         'token': args.token,
         'verbose': args.verbose,
+        'dry_run': args.dry_run,
     }
 
     traverse(args.url, args.out_dir, None, options)
