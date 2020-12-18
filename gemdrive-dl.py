@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, argparse, threading, queue, json, math
+import os, argparse, threading, queue, json, math, shutil
 from urllib import request
 from datetime import datetime
 
@@ -30,7 +30,6 @@ def traverse(url, parent_dir, gem_data_in, options):
         is_dir = child_url.endswith('/')
         if is_dir:
 
-
             if not options['dry_run']:
                 try:
                     os.makedirs(child_path)
@@ -44,6 +43,23 @@ def traverse(url, parent_dir, gem_data_in, options):
             traverse(child_url, child_path, child_gem_data, options)
         else:
             job_queue.put((child_url, parent_dir, child, options))
+
+    if options['delete']:
+        with os.scandir(parent_dir) as it:
+            for entry in it:
+                name = entry.name
+                if entry.is_dir():
+                    name += '/'
+
+                if name not in gem_data['children']:
+                    item_path = os.path.join(parent_dir, name)
+                    print("Delete", item_path)
+
+                    if not options['dry_run']:
+                        if entry.is_dir():
+                            shutil.rmtree(item_path)
+                        else:
+                            os.remove(item_path)
 
 
 def downloader():
@@ -120,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', help='Verbose printing', default=False, action='store_true')
     parser.add_argument('--dry-run', help='Enable dry run mode. No changes will be made to destination',
             default=False, action='store_true')
+    parser.add_argument('--delete', help="Deletes items in destination that aren't in source", default=False, action='store_true')
     args = parser.parse_args()
 
     if args.out_dir == cwd:
@@ -133,6 +150,7 @@ if __name__ == '__main__':
         'token': args.token,
         'verbose': args.verbose,
         'dry_run': args.dry_run,
+        'delete': args.delete,
     }
 
     traverse(args.url, args.out_dir, None, options)
