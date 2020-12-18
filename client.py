@@ -2,14 +2,15 @@ import os, threading, queue, json, math, shutil
 from urllib import request
 from datetime import datetime
 
+
 class GemDriveClient():
 
-    def __init__(self, options):
+    def __init__(self, **kwargs):
 
-        self.options = options
+        self.options = kwargs
         self.job_queue = queue.Queue(maxsize=8)
 
-        for w in range(options['num_workers']):
+        for w in range(kwargs['num_workers']):
             threading.Thread(target=self.downloader, daemon=True).start()
 
     def sync(self, gemdrive_url, fs_dir):
@@ -73,7 +74,6 @@ class GemDriveClient():
                             else:
                                 os.remove(item_path)
 
-
     def downloader(self):
         while True:
             url, parent_dir, gem_data = self.job_queue.get()
@@ -131,5 +131,3 @@ class GemDriveClient():
                     print("Sizes don't match", url)
 
                 os.utime(path, (stat.st_atime, mtime))
-
-

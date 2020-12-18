@@ -26,15 +26,8 @@ if __name__ == '__main__':
     if args.out_dir == cwd:
         args.out_dir = os.path.join(cwd, dir_name(args.url))
 
+    client = GemDriveClient(depth=args.depth, token=args.token,
+            verbose=args.verbose, dry_run=args.dry_run, delete=args.delete,
+            num_workers=args.num_workers)
 
-    options = {
-        'depth': args.depth,
-        'token': args.token,
-        'verbose': args.verbose,
-        'dry_run': args.dry_run,
-        'delete': args.delete,
-        'num_workers': args.num_workers,
-    }
-
-    client = GemDriveClient(options)
     client.sync(args.url, args.out_dir)
