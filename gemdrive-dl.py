@@ -14,7 +14,7 @@ def traverse(url, parent_dir, gem_data_in, options):
     gem_data = gem_data_in
 
     if gem_data is None:
-        gem_url = url + 'gemdrive/meta.json?max-depth=' + str(max_depth)
+        gem_url = url + 'gemdrive/meta.json?depth=' + str(max_depth)
 
         if token is not None:
             gem_url += '&access_token=' + token
