@@ -6,21 +6,25 @@ from datetime import datetime
 
 job_queue = queue.Queue(maxsize=8)
 
-def traverse(url, parent_dir):
+def traverse(url, parent_dir, gem_data_in, options):
 
-    print(url)
+    max_depth = options['depth']
+    token = options['token']
 
-    gem_url = url + 'gemdrive/meta.json'
+    gem_data = gem_data_in
 
-    res = request.urlopen(gem_url)
-    body = res.read()
-    gem_dir = json.loads(body)
+    if gem_data is None:
+        gem_url = url + 'gemdrive/meta.json?max-depth=' + str(max_depth)
 
-    if 'children' not in gem_dir:
-        return
+        if token is not None:
+            gem_url += '&access_token=' + token
 
-    for child_name in gem_dir['children']:
-        child = gem_dir['children'][child_name]
+        res = request.urlopen(gem_url)
+        body = res.read()
+        gem_data = json.loads(body)
+
+    for child_name in gem_data['children']:
+        child = gem_data['children'][child_name]
         child_url = url + child_name
         child_path = os.path.join(parent_dir, child_name)
         is_dir = child_url.endswith('/')
@@ -29,23 +33,31 @@ def traverse(url, parent_dir):
                 os.makedirs(child_path)
             except:
                 pass
-            traverse(child_url, child_path)
+
+            child_gem_data = child
+            if 'children' not in child:
+                child_gem_data = None
+
+            traverse(child_url, child_path, child_gem_data, options)
         else:
-            job_queue.put((child_url, parent_dir, child))
+            job_queue.put((child_url, parent_dir, child, options))
 
 
 def downloader():
     while True:
-        url, parent_dir, gem_data = job_queue.get()
+        url, parent_dir, gem_data, options = job_queue.get()
 
-        print(url)
-
-        handle_file(url, parent_dir, gem_data)
+        handle_file(url, parent_dir, gem_data, options)
 
         job_queue.task_done()
 
 
-def handle_file(url, parent_dir, gem_data):
+def handle_file(url, parent_dir, gem_data, options):
+
+    if options['verbose']:
+        print(url)
+
+    token = options['token']
 
     name = os.path.basename(url)
     path = os.path.join(parent_dir, name)
@@ -67,7 +79,13 @@ def handle_file(url, parent_dir, gem_data):
     needs_update = size != gem_data['size'] or mod_time != gem_data['modTime']
 
     if needs_update:
-        res = request.urlopen(url)
+        print("Syncing", url)
+        file_url = url
+
+        if token is not None:
+            file_url += '?access_token=' + token
+
+        res = request.urlopen(file_url)
         with open(path, 'wb') as f:
             while True:
                 chunk = res.read(4096)
@@ -92,6 +110,9 @@ if __name__ == '__main__':
     parser.add_argument('url', help='GemDrive directory URL')
     parser.add_argument('--num-workers', type=int, help='Number of worker threads', default=4)
     parser.add_argument('--out-dir', help='Output directory', default=cwd)
+    parser.add_argument('--depth', help='Directory tree depth per request', default=8)
+    parser.add_argument('--token', help='Access token', default=None)
+    parser.add_argument('--verbose', help='Verbose printing', default=False, action='store_true')
     args = parser.parse_args()
 
     if args.out_dir == cwd:
@@ -100,6 +121,12 @@ if __name__ == '__main__':
     for w in range(args.num_workers):
         threading.Thread(target=downloader, daemon=True).start()
 
-    traverse(args.url, args.out_dir)
+    options = {
+        'depth': args.depth,
+        'token': args.token,
+        'verbose': args.verbose,
+    }
+
+    traverse(args.url, args.out_dir, None, options)
 
     job_queue.join()
