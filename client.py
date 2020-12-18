@@ -12,8 +12,8 @@ class GemDriveClient():
         for w in range(options['num_workers']):
             threading.Thread(target=self.downloader, daemon=True).start()
 
-    def run(self):
-        self.traverse(self.options['url'], self.options['out_dir'], None)
+    def sync(self, gemdrive_url, fs_dir):
+        self.traverse(gemdrive_url, fs_dir, None)
         self.job_queue.join()
 
     def traverse(self, url, parent_dir, gem_data_in):

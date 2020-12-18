@@ -33,10 +33,8 @@ if __name__ == '__main__':
         'verbose': args.verbose,
         'dry_run': args.dry_run,
         'delete': args.delete,
-        'out_dir': args.out_dir,
-        'url': args.url,
         'num_workers': args.num_workers,
     }
 
     client = GemDriveClient(options)
-    client.run()
+    client.sync(args.url, args.out_dir)
