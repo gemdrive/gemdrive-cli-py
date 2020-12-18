@@ -4,123 +4,136 @@ import os, argparse, threading, queue, json, math, shutil
 from urllib import request
 from datetime import datetime
 
-job_queue = queue.Queue(maxsize=8)
 
-def traverse(url, parent_dir, gem_data_in, options):
+class GemDriveClient():
 
-    max_depth = options['depth']
-    token = options['token']
+    def __init__(self, options):
 
-    gem_data = gem_data_in
+        self.options = options
+        self.job_queue = queue.Queue(maxsize=8)
 
-    if gem_data is None:
-        gem_url = url + 'gemdrive/meta.json?depth=' + str(max_depth)
+        for w in range(args.num_workers):
+            threading.Thread(target=self.downloader, daemon=True).start()
 
-        if token is not None:
-            gem_url += '&access_token=' + token
+    def run(self):
+        self.traverse(args.url, args.out_dir, None)
+        self.job_queue.join()
 
-        res = request.urlopen(gem_url)
-        body = res.read()
-        gem_data = json.loads(body)
+    def traverse(self, url, parent_dir, gem_data_in):
 
-    if not os.path.isdir(parent_dir):
-        print("Create", parent_dir)
-        if options['dry_run']:
-            # Early return for dry run because attempts to compare child
-            # directories which don't exist will cause exceptions.
-            return
-        else:
-            os.mkdir(parent_dir)
+        max_depth = self.options['depth']
+        token = self.options['token']
 
-    for child_name in gem_data['children']:
-        child = gem_data['children'][child_name]
-        child_url = url + child_name
-        child_path = os.path.join(parent_dir, child_name)
-        is_dir = child_url.endswith('/')
-        if is_dir:
-            child_gem_data = child
-            if 'children' not in child:
-                child_gem_data = None
+        gem_data = gem_data_in
 
-            traverse(child_url, child_path, child_gem_data, options)
-        else:
-            job_queue.put((child_url, parent_dir, child, options))
-
-    if options['delete']:
-        with os.scandir(parent_dir) as it:
-            for entry in it:
-                name = entry.name
-                if entry.is_dir():
-                    name += '/'
-
-                if name not in gem_data['children']:
-                    item_path = os.path.join(parent_dir, name)
-                    print("Delete", item_path)
-
-                    if not options['dry_run']:
-                        if entry.is_dir():
-                            shutil.rmtree(item_path)
-                        else:
-                            os.remove(item_path)
-
-
-def downloader():
-    while True:
-        url, parent_dir, gem_data, options = job_queue.get()
-
-        handle_file(url, parent_dir, gem_data, options)
-
-        job_queue.task_done()
-
-
-def handle_file(url, parent_dir, gem_data, options):
-
-    if options['verbose']:
-        print(url)
-
-    token = options['token']
-
-    name = os.path.basename(url)
-    path = os.path.join(parent_dir, name)
-
-    try:
-        stat = os.stat(path)
-    except:
-        stat = None
-
-    size = 0
-    mod_time = ''
-    if stat:
-        size = stat.st_size
-        mod_time = datetime.utcfromtimestamp(stat.st_mtime).replace(microsecond=0).isoformat() + 'Z'
-
-    utc_dt = datetime.strptime(gem_data['modTime'], '%Y-%m-%dT%H:%M:%SZ')
-    mtime = math.floor((utc_dt - datetime(1970, 1, 1)).total_seconds())
-
-    needs_update = size != gem_data['size'] or mod_time != gem_data['modTime']
-
-    if needs_update:
-        print("Sync", url)
-
-        if not options['dry_run']:
-            file_url = url
+        if gem_data is None:
+            gem_url = url + 'gemdrive/meta.json?depth=' + str(max_depth)
 
             if token is not None:
-                file_url += '?access_token=' + token
+                gem_url += '&access_token=' + token
 
-            res = request.urlopen(file_url)
-            with open(path, 'wb') as f:
-                while True:
-                    chunk = res.read(4096)
-                    if not chunk:
-                        break
-                    f.write(chunk)
+            res = request.urlopen(gem_url)
+            body = res.read()
+            gem_data = json.loads(body)
+
+        if not os.path.isdir(parent_dir):
+            print("Create", parent_dir)
+            if self.options['dry_run']:
+                # Early return for dry run because attempts to compare child
+                # directories which don't exist will cause exceptions.
+                return
+            else:
+                os.mkdir(parent_dir)
+
+        for child_name in gem_data['children']:
+            child = gem_data['children'][child_name]
+            child_url = url + child_name
+            child_path = os.path.join(parent_dir, child_name)
+            is_dir = child_url.endswith('/')
+            if is_dir:
+                child_gem_data = child
+                if 'children' not in child:
+                    child_gem_data = None
+
+                self.traverse(child_url, child_path, child_gem_data)
+            else:
+                self.job_queue.put((child_url, parent_dir, child))
+
+        if self.options['delete']:
+            with os.scandir(parent_dir) as it:
+                for entry in it:
+                    name = entry.name
+                    if entry.is_dir():
+                        name += '/'
+
+                    if name not in gem_data['children']:
+                        item_path = os.path.join(parent_dir, name)
+                        print("Delete", item_path)
+
+                        if not self.options['dry_run']:
+                            if entry.is_dir():
+                                shutil.rmtree(item_path)
+                            else:
+                                os.remove(item_path)
+
+
+    def downloader(self):
+        while True:
+            url, parent_dir, gem_data = self.job_queue.get()
+
+            self.handle_file(url, parent_dir, gem_data)
+
+            self.job_queue.task_done()
+
+
+    def handle_file(self, url, parent_dir, gem_data):
+
+        if self.options['verbose']:
+            print(url)
+
+        token = self.options['token']
+
+        name = os.path.basename(url)
+        path = os.path.join(parent_dir, name)
+
+        try:
             stat = os.stat(path)
+        except:
+            stat = None
 
-            if stat.st_size != gem_data['size']:
-                print("Sizes don't match", url)
+        size = 0
+        mod_time = ''
+        if stat:
+            size = stat.st_size
+            mod_time = datetime.utcfromtimestamp(stat.st_mtime).replace(microsecond=0).isoformat() + 'Z'
 
-            os.utime(path, (stat.st_atime, mtime))
+        utc_dt = datetime.strptime(gem_data['modTime'], '%Y-%m-%dT%H:%M:%SZ')
+        mtime = math.floor((utc_dt - datetime(1970, 1, 1)).total_seconds())
+
+        needs_update = size != gem_data['size'] or mod_time != gem_data['modTime']
+
+        if needs_update:
+            print("Sync", url)
+
+            if not self.options['dry_run']:
+                file_url = url
+
+                if token is not None:
+                    file_url += '?access_token=' + token
+
+                res = request.urlopen(file_url)
+                with open(path, 'wb') as f:
+                    while True:
+                        chunk = res.read(4096)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                stat = os.stat(path)
+
+                if stat.st_size != gem_data['size']:
+                    print("Sizes don't match", url)
+
+                os.utime(path, (stat.st_atime, mtime))
 
 def dir_name(path):
     return os.path.basename(path[:-1])
@@ -144,8 +157,6 @@ if __name__ == '__main__':
     if args.out_dir == cwd:
         args.out_dir = os.path.join(cwd, dir_name(args.url))
 
-    for w in range(args.num_workers):
-        threading.Thread(target=downloader, daemon=True).start()
 
     options = {
         'depth': args.depth,
@@ -155,6 +166,5 @@ if __name__ == '__main__':
         'delete': args.delete,
     }
 
-    traverse(args.url, args.out_dir, None, options)
-
-    job_queue.join()
+    client = GemDriveClient(options)
+    client.run()
