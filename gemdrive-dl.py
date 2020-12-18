@@ -23,19 +23,21 @@ def traverse(url, parent_dir, gem_data_in, options):
         body = res.read()
         gem_data = json.loads(body)
 
+    if not os.path.isdir(parent_dir):
+        print("Create", parent_dir)
+        if options['dry_run']:
+            # Early return for dry run because attempts to compare child
+            # directories which don't exist will cause exceptions.
+            return
+        else:
+            os.mkdir(parent_dir)
+
     for child_name in gem_data['children']:
         child = gem_data['children'][child_name]
         child_url = url + child_name
         child_path = os.path.join(parent_dir, child_name)
         is_dir = child_url.endswith('/')
         if is_dir:
-
-            if not options['dry_run']:
-                try:
-                    os.makedirs(child_path)
-                except:
-                    pass
-
             child_gem_data = child
             if 'children' not in child:
                 child_gem_data = None
@@ -98,7 +100,7 @@ def handle_file(url, parent_dir, gem_data, options):
     needs_update = size != gem_data['size'] or mod_time != gem_data['modTime']
 
     if needs_update:
-        print("Syncing", url)
+        print("Sync", url)
 
         if not options['dry_run']:
             file_url = url
