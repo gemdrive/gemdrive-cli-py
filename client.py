@@ -43,6 +43,9 @@ class GemDriveClient():
             else:
                 os.mkdir(parent_dir)
 
+        if 'children' not in gem_data:
+            return
+
         for child_name in gem_data['children']:
             child = gem_data['children'][child_name]
             child_url = url + child_name
