@@ -1,4 +1,4 @@
-import os, threading, queue, json, math, shutil
+import os, threading, queue, json, math, shutil, stat
 from urllib import request
 from datetime import datetime
 
@@ -97,20 +97,28 @@ class GemDriveClient():
         path = os.path.join(parent_dir, name)
 
         try:
-            stat = os.stat(path)
+            stats = os.stat(path)
         except:
-            stat = None
+            stats = None
 
         size = 0
         mod_time = ''
-        if stat:
-            size = stat.st_size
-            mod_time = datetime.utcfromtimestamp(stat.st_mtime).replace(microsecond=0).isoformat() + 'Z'
+        dest_is_exe = False
+        if stats:
+            size = stats.st_size
+            mod_time = datetime.utcfromtimestamp(stats.st_mtime).replace(microsecond=0).isoformat() + 'Z'
+            dest_is_exe = stats.st_mode & 0o111 != 0
+
 
         utc_dt = datetime.strptime(gem_data['modTime'], '%Y-%m-%dT%H:%M:%SZ')
         mtime = math.floor((utc_dt - datetime(1970, 1, 1)).total_seconds())
 
         needs_update = size != gem_data['size'] or mod_time != gem_data['modTime']
+
+        src_is_exe = 'isExecutable' in gem_data and gem_data['isExecutable']
+
+        if  src_is_exe != dest_is_exe:
+            needs_update = True
 
         if needs_update:
             print("Sync", url)
@@ -128,9 +136,12 @@ class GemDriveClient():
                         if not chunk:
                             break
                         f.write(chunk)
-                stat = os.stat(path)
+                stats = os.stat(path)
 
-                if stat.st_size != gem_data['size']:
+                if stats.st_size != gem_data['size']:
                     print("Sizes don't match", url)
 
-                os.utime(path, (stat.st_atime, mtime))
+                os.utime(path, (stats.st_atime, mtime))
+
+                if src_is_exe and not dest_is_exe:
+                    os.chmod(path, stats.st_mode | 0o111)
