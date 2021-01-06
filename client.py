@@ -3,6 +3,15 @@ from urllib import request
 from datetime import datetime
 
 
+# Ensures default values are properly set if missing
+def clean_gem_data(data):
+
+    if 'size' not in data:
+        data['size'] = 0
+
+    return data
+
+
 class GemDriveClient():
 
     def __init__(self, **kwargs):
@@ -34,6 +43,8 @@ class GemDriveClient():
             body = res.read()
             gem_data = json.loads(body)
 
+        gem_data = clean_gem_data(gem_data)
+
         if not os.path.isdir(parent_dir):
             print("Create", parent_dir)
             if self.options['dry_run']:
@@ -48,15 +59,12 @@ class GemDriveClient():
 
         for child_name in gem_data['children']:
             child = gem_data['children'][child_name]
+            child = clean_gem_data(child)
             child_url = url + child_name
             child_path = os.path.join(parent_dir, child_name)
             is_dir = child_url.endswith('/')
             if is_dir:
-                child_gem_data = child
-                if 'children' not in child:
-                    child_gem_data = None
-
-                self.traverse(child_url, child_path, child_gem_data)
+                self.traverse(child_url, child_path, child)
             else:
                 self.job_queue.put((child_url, parent_dir, child))
 
@@ -88,9 +96,6 @@ class GemDriveClient():
 
     def handle_file(self, url, parent_dir, gem_data):
 
-        if self.options['verbose']:
-            print(url)
-
         token = self.options['token']
 
         name = os.path.basename(url)
@@ -117,11 +122,11 @@ class GemDriveClient():
 
         src_is_exe = 'isExecutable' in gem_data and gem_data['isExecutable']
 
-        if  src_is_exe != dest_is_exe:
+        if src_is_exe != dest_is_exe:
             needs_update = True
 
         if needs_update:
-            print("Sync", url)
+            print("Sync", path)
 
             if not self.options['dry_run']:
                 file_url = url
