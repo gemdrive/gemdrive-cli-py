@@ -30,4 +30,7 @@ if __name__ == '__main__':
             verbose=args.verbose, dry_run=args.dry_run, delete=args.delete,
             num_workers=args.num_workers)
 
-    client.sync(args.url, args.out_dir)
+    try:
+        client.sync(args.url, args.out_dir)
+    except KeyboardInterrupt:
+        print("Aborted")
