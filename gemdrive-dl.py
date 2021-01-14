@@ -8,21 +8,39 @@ parser.add_argument('url', help='GemDrive directory URL')
 parser.add_argument('--token', help='Access token', default=None)
 args = parser.parse_args()
 
-url = args.url+ '/gemdrive/meta.json'
-if args.token is not None:
-    url += '?access_token=' + args.token
+is_dir = args.url.endswith('/')
 
-res = request.urlopen(url)
-body = res.read()
-gem_data = json.loads(body)
+if is_dir:
+    url = args.url+ '/gemdrive/meta.json'
+    if args.token is not None:
+        url += '?access_token=' + args.token
 
-for child_name in gem_data['children']:
-    is_dir = child_name.endswith('/')
+    res = request.urlopen(url)
+    body = res.read()
+    gem_data = json.loads(body)
 
-    out = child_name
+    for child_name in gem_data['children']:
+        is_dir = child_name.endswith('/')
 
-    if not is_dir:
-        child = gem_data['children'][child_name]
-        out += "\t{}\t{}".format(child['size'], child['modTime'])
+        out = child_name
 
-    print(out)
+        if not is_dir:
+            child = gem_data['children'][child_name]
+            out += "\t{}\t{}".format(child['size'], child['modTime'])
+
+        print(out)
+else:
+    url = args.url
+    if args.token is not None:
+        url += '?access_token=' + args.token
+
+    res = request.urlopen(url)
+
+    try:
+        while True:
+            chunk = res.read(4096)
+            if not chunk:
+                break
+            sys.stdout.buffer.write(chunk)
+    except KeyboardInterrupt:
+        sys.stderr.write("Aborting")
