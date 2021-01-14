@@ -10,6 +10,9 @@ args = parser.parse_args()
 
 is_dir = args.url.endswith('/')
 
+if not args.url.startswith('http'):
+    args.url = 'https://' + args.url
+
 if is_dir:
     url = args.url+ '/gemdrive/meta.json'
     if args.token is not None:
