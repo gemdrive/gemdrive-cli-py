@@ -62,7 +62,7 @@ class GemDriveClient():
         for child_name in gem_data['children']:
             child = gem_data['children'][child_name]
             child = clean_gem_data(child)
-            child_url = url + parse.quote(child_name)
+            child_url = url + child_name
             child_path = os.path.join(parent_dir, child_name)
             is_dir = child_url.endswith('/')
             if is_dir:
@@ -136,7 +136,10 @@ class GemDriveClient():
                 if token is not None:
                     file_url += '?access_token=' + token
 
-                res = request.urlopen(file_url)
+                u = parse.urlparse(file_url)
+                req_url = u.scheme + '://' + u.netloc + parse.quote(u.path) + '?' + u.query
+
+                res = request.urlopen(req_url)
                 with open(path, 'wb') as f:
                     while True:
                         chunk = res.read(4096)
