@@ -47,7 +47,7 @@ class GemDriveClient():
                 gem_data = json.loads(body)
             except request.URLError as e:
                 print("Timed out retrieving " + gem_url)
-                return
+                raise
 
         gem_data = clean_gem_data(gem_data)
 
@@ -147,7 +147,7 @@ class GemDriveClient():
                     res = request.urlopen(req_url, timeout=5)
                 except request.URLError as e:
                     print("Timed out retrieving " + req_url)
-                    return
+                    raise
 
                 with open(path, 'wb') as f:
                     while True:
