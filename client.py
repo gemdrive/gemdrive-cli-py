@@ -36,7 +36,7 @@ class GemDriveClient():
         if gem_data is None:
             u = parse.urlparse(url)
             p = parse.quote(u.path)
-            gem_url = u.scheme + '://' + u.netloc + '/gemdrive/index' + p + 'list.json?depth=' + str(max_depth)
+            gem_url = u.scheme + '://' + u.netloc + '/gemdrive/index' + p + 'tree.json?depth=' + str(max_depth)
 
             if token is not None:
                 gem_url += '&access_token=' + token
