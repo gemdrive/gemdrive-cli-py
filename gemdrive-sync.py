@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('url', help='GemDrive directory URL')
     parser.add_argument('--num-workers', type=int, help='Number of worker threads', default=4)
     parser.add_argument('--out-dir', help='Output directory', default=cwd)
-    parser.add_argument('--depth', help='Directory tree depth per request', default=8)
+    #parser.add_argument('--depth', help='Directory tree depth per request', default=8)
     parser.add_argument('--token', help='Access token', default=None)
     parser.add_argument('--verbose', help='Verbose printing', default=False, action='store_true')
     parser.add_argument('--dry-run', help='Enable dry run mode. No changes will be made to destination',
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     if args.out_dir == cwd:
         args.out_dir = os.path.join(cwd, dir_name(args.url))
 
-    client = GemDriveClient(depth=args.depth, token=args.token,
+    client = GemDriveClient(depth=0, token=args.token,
             verbose=args.verbose, dry_run=args.dry_run, delete=args.delete,
             num_workers=args.num_workers)
 

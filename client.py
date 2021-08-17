@@ -28,7 +28,7 @@ class GemDriveClient():
 
     def traverse(self, url, parent_dir, gem_data_in):
 
-        max_depth = self.options['depth']
+        depth = self.options['depth']
         token = self.options['token']
 
         gem_data = gem_data_in
@@ -36,7 +36,7 @@ class GemDriveClient():
         if gem_data is None:
             u = parse.urlparse(url)
             p = parse.quote(u.path)
-            gem_url = u.scheme + '://' + u.netloc + '/gemdrive/index' + p + 'tree.json?depth=' + str(max_depth)
+            gem_url = u.scheme + '://' + u.netloc + '/gemdrive/index' + p + 'tree.json?depth=' + str(depth)
 
             if token is not None:
                 gem_url += '&access_token=' + token
