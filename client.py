@@ -41,9 +41,13 @@ class GemDriveClient():
             if token is not None:
                 gem_url += '&access_token=' + token
 
-            res = request.urlopen(gem_url)
-            body = res.read()
-            gem_data = json.loads(body)
+            try:
+                res = request.urlopen(gem_url, timeout=5)
+                body = res.read()
+                gem_data = json.loads(body)
+            except request.URLError as e:
+                print("Timed out retrieving " + gem_url)
+                return
 
         gem_data = clean_gem_data(gem_data)
 
@@ -139,7 +143,12 @@ class GemDriveClient():
                 u = parse.urlparse(file_url)
                 req_url = u.scheme + '://' + u.netloc + parse.quote(u.path) + '?' + u.query
 
-                res = request.urlopen(req_url)
+                try:
+                    res = request.urlopen(req_url, timeout=5)
+                except request.URLError as e:
+                    print("Timed out retrieving " + req_url)
+                    return
+
                 with open(path, 'wb') as f:
                     while True:
                         chunk = res.read(4096)
