@@ -1,5 +1,5 @@
 import os, threading, queue, json, math, shutil, stat
-from urllib import request
+from urllib import request, parse
 from datetime import datetime
 
 
@@ -34,7 +34,9 @@ class GemDriveClient():
         gem_data = gem_data_in
 
         if gem_data is None:
-            gem_url = url + 'gemdrive/meta.json?depth=' + str(max_depth)
+            u = parse.urlparse(url)
+            p = parse.quote(u.path)
+            gem_url = u.scheme + '://' + u.netloc + '/gemdrive/index' + p + 'list.json?depth=' + str(max_depth)
 
             if token is not None:
                 gem_url += '&access_token=' + token
@@ -60,7 +62,7 @@ class GemDriveClient():
         for child_name in gem_data['children']:
             child = gem_data['children'][child_name]
             child = clean_gem_data(child)
-            child_url = url + child_name
+            child_url = url + parse.quote(child_name)
             child_path = os.path.join(parent_dir, child_name)
             is_dir = child_url.endswith('/')
             if is_dir:
